@@ -1,10 +1,11 @@
 import options
 import strutils
-import strformat
 import net
 import asyncnet
 import asyncdispatch
-import macros
+import times
+import nativesockets
+import tables
 
 
 # Type
@@ -28,22 +29,37 @@ type
 
 type
   ProxyHttpRequest = object
-    httpMethod*: HttpMethod
-    host*: string
-    path*: string
-    port*: Port
-    protocol*: string
-    headers*: seq[HttpHeader]
-    body*: string
+    httpMethod: HttpMethod
+    host: string
+    path: string
+    port: Port
+    protocol: string
+    headers: seq[HttpHeader]
+    body: string
 
 
 type
   HttpResponse = object
-    protocol*: string
-    statusCode*: uint16
-    statusMessage*: string
-    headers*: seq[HttpHeader]
-    body*: string
+    protocol: string
+    statusCode: uint16
+    statusMessage: string
+    headers: seq[HttpHeader]
+    body: string
+
+
+type
+  Session = object
+    fromHostname: string
+    toHostname: string
+    request: ProxyHttpRequest
+    response: HttpResponse
+    timestamp: Time  # UnixTime
+
+
+# variable
+
+# Store the latest session by source and destination.
+var latestSession: Table[tuple[fromHostname: string, toHostname: string], Session]
 
 # Function
 
@@ -176,7 +192,7 @@ func proxyHttpRequestParser(rawData: string): Option[ProxyHttpRequest] =
     return none(ProxyHttpRequest)
 
 
-func HttpResponseParser(rawData: string): Option[HttpResponse] =
+func httpResponseParser(rawData: string): Option[HttpResponse] =
   let rawHeaderAndBody = rawData.split("\r\n\r\n")
   
   try:
@@ -208,7 +224,7 @@ func HttpResponseParser(rawData: string): Option[HttpResponse] =
     return none(HttpResponse)
 
 
-proc processSession(client: AsyncSocket) {.async.} =
+proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   # first line
   let firstLine = await client.recvLine()
   let maybeFst = firstLine.parseRequestFirstLine()
@@ -218,23 +234,34 @@ proc processSession(client: AsyncSocket) {.async.} =
 
   let fst = maybeFst.get()
   let host = newAsyncSocket(buffered=false)
-  await host.connect(fst.host, fst.port)
+  try:
+    await host.connect(fst.host, fst.port)
+  except OSError:
+    # name or service not known
+    # TODO: 宛先がない場合, Proxyはどうclientに返信すればいいのか
+    client.close()
+    host.close()
+    return
+
   await host.send(firstLine & "\r\n")
 
   const bufsize = 1024
-  # client -> host
+  var 
+    requestRaw = firstLine & "\r\n"
+    responseRaw: string
+  # client -> host (request)
   while true:
     let c2hbuf = await client.recv(bufsize)
-    echo c2hbuf
     await host.send(c2hbuf)
+    requestRaw &= c2hbuf
     if c2hbuf.len < bufsize:      
       break
   
-  # # host -> client
+  # host -> client (response)
   while true:
     let h2cbuf = await host.recv(bufsize)
-    echo h2cbuf
     await client.send(h2cbuf)
+    responseRaw &= h2cbuf
     if h2cbuf.len < bufsize:
       echo "break"
       break
@@ -243,6 +270,28 @@ proc processSession(client: AsyncSocket) {.async.} =
     client.close()
   if not host.isClosed:
     host.close()
+
+  let maybeProxyHttpRequest = requestRaw.proxyHttpRequestParser
+  let maybeHttpResponse = responseRaw.httpResponseParser
+  if maybeProxyHttpRequest.isNone or maybeHttpResponse.isNone:
+    return
+
+  let fromHostname = try:
+    clientAddr.getHostByAddr.name
+  except OSError:
+    clientAddr
+
+  let session: Session = Session(
+    fromHostname: fromHostname,
+    toHostname: maybeProxyHttpRequest.get.host,
+    request: maybeProxyHttpRequest.get,
+    response: maybeHttpResponse.get,
+    timestamp: getTime(),
+  )
+
+  latestSession[(fromHostname: session.fromHostname, toHostname: session.toHostname)] = session
+
+  return
 
 
 proc proxyServer*(address: string, port: Port) {.async.} =
@@ -253,5 +302,5 @@ proc proxyServer*(address: string, port: Port) {.async.} =
   server.listen()
 
   while true:
-    let addr_client = await server.acceptAddr()
-    asyncCheck processSession(addr_client.client)
+    let (address, client) = await server.acceptAddr()
+    asyncCheck client.processSession(address)
