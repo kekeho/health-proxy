@@ -94,7 +94,7 @@ func parseRequestFirstLine(str: string): Option[tuple[httpMethod: HttpMethod, ho
     let host: string = host_path[0].split(":")[0]
 
     # port
-    let port: Port = Port(host_path[0].split(":")[1].parseInt)
+    let port: Port = if host_path[0].contains(":"): Port(host_path[0].split(":")[1].parseInt) else: Port(80)
     
     # path
     let path: string = "/" & host_path[1..host_path.len-1].join("/")
@@ -117,7 +117,7 @@ func parseResponseFirstLine(str: string): Option[tuple[protocol: string, statusC
     let splitted: seq[string] = str.split(' ')
     let protocol: string = splitted[0]
     let statusCode: uint16 = splitted[1].parseUInt.uint16
-    let statusMessage: string = splitted[1]
+    let statusMessage: string = splitted[2..splitted.len-1].join(" ")
 
     return some((protocol: protocol, statusCode: statusCode, statusMessage: statusMessage))
   except IndexDefect, ValueError:
@@ -130,8 +130,10 @@ func parseHeaderBlock(headerLines: seq[string]): Option[seq[HttpHeader]] =
 
   try:
     for line in headerLines:
+      if not line.contains(":"):
+        return failedResult
       let splitted = line.split(":")
-      let kv = (key: splitted[0].strip(), value: splitted[0].strip())
+      let kv = (key: splitted[0].strip(), value: splitted[1..splitted.len-1].join(":").strip())
       headers.add(kv)    
   except IndexDefect:
     return failedResult
