@@ -11,3 +11,4 @@ bin           = @["health_proxy"]
 # Dependencies
 
 requires "nim >= 1.4.8"
+requires "norm >= 2.3.0"

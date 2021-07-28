@@ -5,86 +5,17 @@ import asyncnet
 import asyncdispatch
 import times
 import nativesockets
-import tables
 
-
-# Type
-
-type
-  HttpMethod = enum
-    Head,
-    Get,
-    Post,
-    Put,
-    Patch,
-    Delete,
-    Trace,
-    Options,
-    Connect,
-
-
-type
-  HttpHeader = tuple[key: string, value: string]
-
-
-type
-  ProxyHttpRequest = object
-    httpMethod: HttpMethod
-    host: string
-    path: string
-    port: Port
-    protocol: string
-    headers: seq[HttpHeader]
-    body: string
-
-
-type
-  HttpResponse = object
-    protocol: string
-    statusCode: uint16
-    statusMessage: string
-    headers: seq[HttpHeader]
-    body: string
-
-
-type
-  Session = object
-    fromHostname: string
-    toHostname: string
-    request: ProxyHttpRequest
-    response: HttpResponse
-    timestamp: Time  # UnixTime
+import types
+import sessiontable
 
 
 # variable
 
 # Store the latest session by source and destination.
-var latestSession: Table[tuple[fromHostname: string, toHostname: string], Session]
+var latestSession: SessionTable
 
 # Function
-
-func toMethod(str: string): Option[HttpMethod] =
-    case str.toUpper
-    of "HEAD":
-        return some(HttpMethod.Head)
-    of "GET":
-        return some(HttpMethod.Get)
-    of "POST":
-        return some(HttpMethod.Post)
-    of "PUT":
-        return some(HttpMethod.Put)
-    of "PATCH":
-        return some(HttpMethod.Patch)
-    of "DELETE":
-        return some(HttpMethod.Delete)
-    of "TRACE":
-        return some(HttpMethod.Trace)
-    of "OPTIONS":
-        return some(HttpMethod.Options)
-    of "CONNECT":
-        return some(HttpMethod.Connect)
-
-    return none(HttpMethod)
 
 
 func parseRequestFirstLine(str: string): Option[tuple[httpMethod: HttpMethod, host: string, port: Port, path: string, protocol: string]] =
@@ -263,7 +194,6 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
     await client.send(h2cbuf)
     responseRaw &= h2cbuf
     if h2cbuf.len < bufsize:
-      echo "break"
       break
 
   if not client.isClosed:
@@ -290,7 +220,6 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   )
 
   latestSession[(fromHostname: session.fromHostname, toHostname: session.toHostname)] = session
-
   return
 
 
