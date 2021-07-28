@@ -4,12 +4,13 @@ import strformat
 import net
 import asyncnet
 import asyncdispatch
+import macros
 
 
 # Type
 
 type
-  HttpMethod* = enum
+  HttpMethod = enum
     Head,
     Get,
     Post,
@@ -22,11 +23,11 @@ type
 
 
 type
-  HttpHeader* = tuple[key: string, value: string]
+  HttpHeader = tuple[key: string, value: string]
 
 
 type
-  ProxyHttpRequest* = object
+  ProxyHttpRequest = object
     httpMethod*: HttpMethod
     host*: string
     path*: string
@@ -37,7 +38,7 @@ type
 
 
 type
-  HttpResponse* = object
+  HttpResponse = object
     protocol*: string
     statusCode*: uint16
     statusMessage*: string
@@ -141,12 +142,12 @@ func parseHeaderBlock(headerLines: seq[string]): Option[seq[HttpHeader]] =
   return some(headers)
 
 
-func proxyHttpRequestParser*(rawData: string): Option[ProxyHttpRequest] =
-  let rawHeaderAndBody = rawData.split("\c\n\c\n")
+func proxyHttpRequestParser(rawData: string): Option[ProxyHttpRequest] =
+  let rawHeaderAndBody = rawData.split("\r\n\r\n")
   
   try:
     let 
-      rawTopAndHeaderLines = rawHeaderAndBody[0].split("\c\n")
+      rawTopAndHeaderLines = rawHeaderAndBody[0].split("\r\n")
       body = rawHeaderAndBody[1]
     
     # top
@@ -175,12 +176,12 @@ func proxyHttpRequestParser*(rawData: string): Option[ProxyHttpRequest] =
     return none(ProxyHttpRequest)
 
 
-func HttpResponseParser*(rawData: string): Option[HttpResponse] =
-  let rawHeaderAndBody = rawData.split("\c\n\c\n")
+func HttpResponseParser(rawData: string): Option[HttpResponse] =
+  let rawHeaderAndBody = rawData.split("\r\n\r\n")
   
   try:
     let 
-      rawTopAndHeaderLines = rawHeaderAndBody[0].split("\c\n")
+      rawTopAndHeaderLines = rawHeaderAndBody[0].split("\r\n")
       body = rawHeaderAndBody[1]
     
     # top
@@ -205,3 +206,52 @@ func HttpResponseParser*(rawData: string): Option[HttpResponse] =
 
   except IndexDefect:
     return none(HttpResponse)
+
+
+proc processSession(client: AsyncSocket) {.async.} =
+  # first line
+  let firstLine = await client.recvLine()
+  let maybeFst = firstLine.parseRequestFirstLine()
+  if maybeFst.isNone:
+    client.close()
+    return
+
+  let fst = maybeFst.get()
+  let host = newAsyncSocket(buffered=false)
+  await host.connect(fst.host, fst.port)
+  await host.send(firstLine & "\r\n")
+
+  const bufsize = 1024
+  # client -> host
+  while true:
+    let c2hbuf = await client.recv(bufsize)
+    echo c2hbuf
+    await host.send(c2hbuf)
+    if c2hbuf.len < bufsize:      
+      break
+  
+  # # host -> client
+  while true:
+    let h2cbuf = await host.recv(bufsize)
+    echo h2cbuf
+    await client.send(h2cbuf)
+    if h2cbuf.len < bufsize:
+      echo "break"
+      break
+
+  if not client.isClosed:
+    client.close()
+  if not host.isClosed:
+    host.close()
+
+
+proc proxyServer*(address: string, port: Port) {.async.} =
+  let server = newAsyncSocket(buffered=false)
+  server.setSockOpt(OptReusePort, true)
+  server.setSockOpt(OptReuseAddr, true)
+  server.bindAddr(port, address)
+  server.listen()
+
+  while true:
+    let addr_client = await server.acceptAddr()
+    asyncCheck processSession(addr_client.client)

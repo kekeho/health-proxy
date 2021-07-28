@@ -90,11 +90,11 @@ suite "library test":
       doAssert headers3.parseHeaderBlock == none(seq[HttpHeader])
   
   test "func proxyHttpRequestParser":
-    let request = "GET http://www.example.com HTTP/1.1\c\n" & 
-    "Host: www.example.com\c\n" &
-    "content-type : text/html; charset=utf-8\c\n" &
-    "\c\n" &
-    "Hello, World!\c\nhogefuga"
+    let request = "GET http://www.example.com HTTP/1.1\r\n" & 
+    "Host: www.example.com\r\n" &
+    "content-type : text/html; charset=utf-8\r\n" &
+    "\r\n" &
+    "Hello, World!\r\nhogefuga"
 
     doAssert request.proxyHttpRequestParser == some(ProxyHttpRequest(
       httpMethod: HttpMethod.Get,
@@ -103,14 +103,14 @@ suite "library test":
       port: Port(80),
       protocol: "HTTP/1.1",
       headers: @[(key: "Host", value: "www.example.com"), (key: "content-type", value: "text/html; charset=utf-8")],
-      body: "Hello, World!\c\nhogefuga",
+      body: "Hello, World!\r\nhogefuga",
     ))
   
   test "func HttpResponseParser":
-    let resp = "HTTP/1.1 201 Created\c\n" & 
-    "Host: www.example.com\c\n" &
-    "content-type : text/html; charset=utf-8\c\n" &
-    "\c\n" &
+    let resp = "HTTP/1.1 201 Created\r\n" & 
+    "Host: www.example.com\r\n" &
+    "content-type : text/html; charset=utf-8\r\n" &
+    "\r\n" &
     "This is response."
 
     doAssert resp.HttpResponseParser == some(HttpResponse(
