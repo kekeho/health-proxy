@@ -156,6 +156,7 @@ func httpResponseParser(rawData: string): Option[HttpResponse] =
 
 
 proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
+  echo clientAddr
   # first line
   let firstLine = await client.recvLine()
   let maybeFst = firstLine.parseRequestFirstLine()

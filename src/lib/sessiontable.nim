@@ -8,8 +8,8 @@ import types
 
 type
   Session* = object
-    fromHostname*: string
-    toHostname*: string
+    fromHostName*: string
+    toHostName*: string
     request*: ProxyHttpRequest
     response*: HttpResponse
     timestamp*: Time  # UnixTime
@@ -17,7 +17,7 @@ type
 type
   ErrorSession = ref object of Model
     fromHostName: string
-    toHostname: string
+    toHostName: string
 
     requestHttpMethod: string
     requestHost: string
@@ -36,7 +36,7 @@ type
     timestamp: DateTime
 
 type
-  SessionTableKey = tuple[fromHostname: string, toHostname: string]
+  SessionTableKey = tuple[fromHostName: string, toHostName: string]
 
 type
   SessionTable* = Table[SessionTableKey, Session]
@@ -44,14 +44,18 @@ type
 
 # variables
 
-let dbConn = open("db.sqlite3", "", "", "")
+when defined modeTest:
+  let dbConn = open("testdb.sqlite3", "", "", "")
+  echo "test"
+else:
+  let dbConn = open("db.sqlite3", "", "", "")
 
 # procs
 
 proc newErrorSession(session = Session()): ErrorSession =
   return ErrorSession(
     fromHostname: session.fromHostname,
-    toHostname: session.toHostname,
+    toHostName: session.toHostname,
 
     requestHttpMethod: session.request.httpMethod.toStr,
     requestHost: session.request.host,
