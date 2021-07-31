@@ -5,33 +5,37 @@ import asyncnet
 import asyncdispatch
 import times
 import nativesockets
+import asynchttpserver
+import ws
+import marshal
 
 import types
 import sessiontable
-
+import ws
 
 # variable
 
 # Store the latest session by source and destination.
 var latestSession: SessionTable
+var socketsList: seq[WebSocket]
 
 # Function
 
 
-func parseRequestFirstLine(str: string): Option[tuple[httpMethod: HttpMethod, host: string, port: Port, path: string, protocol: string]] =
+func parseRequestFirstLine(str: string): Option[tuple[httpMethod: types.HttpMethod, host: string, port: Port, path: string, protocol: string]] =
   ## str -> (httpMethod, host, port, path, protocol)
   ## "GET http://example.com:8000/hoge HTTP/1.1" -> (HttpMethod.GET, "example.com", Port(8000), "/hoge", "HTTP/1.1")
   
-  const failedResult = none(tuple[httpMethod: HttpMethod, host: string, port: Port, path: string, protocol: string])
+  const failedResult = none(tuple[httpMethod: types.HttpMethod, host: string, port: Port, path: string, protocol: string])
 
   try:
     let splitted = str.split(' ')
 
     # method
-    let maybeHttpMethod: Option[HttpMethod] = splitted[0].toMethod
+    let maybeHttpMethod: Option[types.HttpMethod] = splitted[0].toMethod
     if maybeHttpMethod.isNone:
       return failedResult
-    let httpMethod: HttpMethod = splitted[0].toMethod.get()
+    let httpMethod: types.HttpMethod = splitted[0].toMethod.get()
 
     # host
     if splitted[1].contains("https://"):
@@ -155,6 +159,21 @@ func httpResponseParser(rawData: string): Option[HttpResponse] =
     return none(HttpResponse)
 
 
+proc broadcast(content: string) {.async.} =
+  var newSocketsList: seq[WebSocket]
+
+  for socket in socketsList:
+    try:
+     await socket.send(content)
+    except WebSocketClosedError:
+      continue
+    except WebSocketError:
+      continue
+    newSocketsList.add(socket)
+
+  socketsList = newSocketsList
+
+
 proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   echo clientAddr
   # first line
@@ -221,15 +240,44 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   )
 
   latestSession[(fromHostname: session.fromHostname, toHostname: session.toHostname)] = session
+  await broadcast($$session)
+
   return
 
+proc socketCallback(req: Request) {.async, gcsafe.} =
+  if req.url.path == "/socket":
+    try:
+      var ws = await newWebSocket(req)
+      socketsList.add(ws)
 
-proc proxyServer*(address: string, port: Port) {.async.} =
+      while ws.readyState == Open:
+        await sleepAsync(1000)
+
+    except WebSocketClosedError:
+      echo "closed"
+    
+    except WebSocketProtocolMismatchError:
+      echo "Protocol Mismatch"
+    
+    except WebSocketError:
+      echo "Unexpected error"
+    
+  await req.respond(Http404, "Not Found")
+
+
+proc socketServer*(port: Port, address: string) =
+  let server = newAsyncHttpServer()
+  asyncCheck server.serve(port, socketCallback, address)
+
+
+proc proxyServer*(address: string, proxyPort: Port, wsPort: Port) {.async.} =
   let server = newAsyncSocket(buffered=false)
   server.setSockOpt(OptReusePort, true)
   server.setSockOpt(OptReuseAddr, true)
-  server.bindAddr(port, address)
+  server.bindAddr(proxyPort, address)
   server.listen()
+
+  socketServer(wsPort, address)
 
   while true:
     let (address, client) = await server.acceptAddr()

@@ -4,7 +4,7 @@ import asyncdispatch
 
 
 proc main() =
-  asyncCheck proxyServer("0.0.0.0", Port(8080))
+  asyncCheck proxyServer("0.0.0.0", Port(8080), Port(8081))
   runForever()
 
 

@@ -12,3 +12,4 @@ bin           = @["health_proxy"]
 
 requires "nim >= 1.4.8"
 requires "norm >= 2.3.0"
+requires "ws >= 0.4.4"
