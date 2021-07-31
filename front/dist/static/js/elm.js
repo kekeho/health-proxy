@@ -5167,13 +5167,13 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$application = _Browser_application;
-var $author$project$Model$Model = F3(
-	function (key, url, sessions) {
-		return {key: key, sessions: sessions, url: url};
+var $author$project$Model$Model = F2(
+	function (key, url) {
+		return {key: key, url: url};
 	});
 var $author$project$Model$initModel = F2(
 	function (url, key) {
-		return A3($author$project$Model$Model, key, url, _List_Nil);
+		return A2($author$project$Model$Model, key, url);
 	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
@@ -6017,7 +6017,7 @@ var $author$project$Model$routeParser = $elm$url$Url$Parser$oneOf(
 		[
 			A2($elm$url$Url$Parser$map, $author$project$Model$IndexPage, $elm$url$Url$Parser$top)
 		]));
-var $author$project$View$view = function (model) {
+var $author$project$Main$view = function (model) {
 	return {
 		body: _List_fromArray(
 			[
@@ -6055,6 +6055,6 @@ var $author$project$View$view = function (model) {
 	};
 };
 var $author$project$Main$main = $elm$browser$Browser$application(
-	{init: $author$project$Main$init, onUrlChange: $author$project$Message$UrlChanged, onUrlRequest: $author$project$Message$UrlRequested, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$View$view});
+	{init: $author$project$Main$init, onUrlChange: $author$project$Message$UrlChanged, onUrlRequest: $author$project$Message$UrlRequested, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
