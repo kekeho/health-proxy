@@ -71,7 +71,9 @@ view : Model.Model -> Browser.Document Msg
 view model =
     { title = "health-proxy"
     , body =
-        [ div [ class "app"]
+        [ header []
+            [ View.navBar ]
+        , div [ class "app"]
             [ case Url.Parser.parse Model.routeParser model.url of
                 Just IndexPage ->
                     div []
