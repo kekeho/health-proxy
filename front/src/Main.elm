@@ -1,8 +1,9 @@
-module Main exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Browser.Navigation as Nav
 import Url
+import Json.Decode as D
 
 import View
 import Model exposing (Route(..))
@@ -10,6 +11,7 @@ import Message exposing (..)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Model exposing (sessionDecoder)
 
 
 main : Program () Model.Model Msg
@@ -24,6 +26,11 @@ main  =
         }
 
 
+-- PORTS
+
+port sessionReciever : (String -> msg) -> Sub msg
+
+
 
 init : flags -> Url.Url -> Nav.Key -> ( Model.Model, Cmd Msg )
 init flags url key =
@@ -33,11 +40,17 @@ init flags url key =
 update : Msg -> Model.Model -> ( Model.Model, Cmd Msg )
 update msg model =
     case msg of
-        Msg1 ->
-            ( model, Cmd.none )
-
-        Msg2 ->
-            ( model, Cmd.none )
+        RecvSession message ->
+            let
+                newSessionList =
+                    case D.decodeString sessionDecoder message of
+                        Ok session ->
+                            session :: model.sessions
+                        Err e ->
+                            Debug.log "error" e 
+                                |> (\_ -> model.sessions)
+            in
+            ( { model | sessions = newSessionList }, Cmd.none )
 
         UrlRequested urlRequest ->
             case urlRequest of
@@ -55,4 +68,4 @@ update msg model =
 
 subscriptions : Model.Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    sessionReciever RecvSession

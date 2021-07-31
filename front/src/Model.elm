@@ -4,7 +4,6 @@ import Url
 import Browser.Navigation as Nav
 import Url.Parser
 import Time
-import Dict exposing (Dict)
 import Json.Decode as D
 import String exposing (toUpper)
 
@@ -29,7 +28,7 @@ type alias ProxyHttpRequest =
     , path: String
     , tcpPort: Int
     , protocol: String
-    , headers: List (Dict String String)
+    , headers: List (String, String)
     , body: String
     }
 
@@ -38,7 +37,7 @@ type alias HttpResponse =
     { protocol: String
     , statusCode: Int
     , statusMessage: String
-    , headers: List (Dict String String)
+    , headers: List (String, String)
     , body: String
     }
 
@@ -115,7 +114,7 @@ proxyHttpRequestDecoder =
         (D.field "path" D.string)
         (D.field "port" D.int)
         (D.field "protocol" D.string)
-        (D.field "headers" (D.list (D.dict D.string)))
+        (D.field "headers" (D.keyValuePairs D.string))
         (D.field "body" D.string)
 
 
@@ -125,7 +124,7 @@ httpResponseDecoder =
         (D.field "protocol" D.string)
         (D.field "statusCode" D.int)
         (D.field "statusMessage" D.string)
-        (D.field "headers" (D.list (D.dict D.string)))
+        (D.field "headers" (D.keyValuePairs D.string))
         (D.field "body" D.string)
 
 

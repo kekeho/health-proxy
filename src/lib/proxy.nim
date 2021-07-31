@@ -7,7 +7,7 @@ import times
 import nativesockets
 import asynchttpserver
 import ws
-import marshal
+import json
 
 import types
 import sessiontable
@@ -240,7 +240,7 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   )
 
   latestSession[(fromHostname: session.fromHostname, toHostname: session.toHostname)] = session
-  await broadcast($$session)
+  await broadcast (session.toJson)
 
   return
 

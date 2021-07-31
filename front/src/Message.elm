@@ -4,7 +4,6 @@ import Browser
 import Url
 
 type Msg
-    = Msg1
-    | Msg2
+    = RecvSession String
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url

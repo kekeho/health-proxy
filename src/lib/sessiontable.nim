@@ -3,6 +3,8 @@ import times
 import norm / [model, sqlite]
 import std / with
 import types
+import strutils
+import json
 
 # types
 
@@ -92,6 +94,42 @@ proc `[]=`*(t: var SessionTable, key: SessionTableKey, val: Session) =
 
   # insert value to table
   tables.`[]=`(t, key, val)
+
+
+# type
+  # Session* = object
+  #   fromHostName*: string
+  #   toHostName*: string
+  #   request*: ProxyHttpRequest
+  #   response*: HttpResponse
+  #   timestamp*: Time  # UnixTime
+
+proc toJson*(s: Session): string =
+  let req = %* {
+    "httpMethod": s.request.httpMethod.toStr,
+    "host": s.request.host,
+    "path": s.request.path,
+    "port": s.request.port.int,
+    "protocol": s.request.protocol,
+    "headers": s.request.headers.toTable,
+    "body": s.request.body,
+  }
+  let resp = %* {
+    "protocol": s.response.protocol,
+    "statusCode": s.response.statusCode,
+    "statusMessage": s.response.statusMessage,
+    "headers": s.response.headers.toTable,
+    "body": s.response.body,
+  }
+  let d = %* {
+    "fromHostName": s.fromHostName,
+    "toHostName": s.toHostName,
+    "request": req,
+    "response": resp,
+    "timestamp": (s.timestamp.toUnixFloat * 1000).int,
+  }
+
+  return d.pretty()
 
 
 block connect:

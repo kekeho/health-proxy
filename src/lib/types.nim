@@ -1,6 +1,7 @@
 import net
 import options
 import strutils
+import tables
 
 
 type
@@ -41,6 +42,14 @@ type
 
 
 # functions
+
+func toTable*(hs: seq[HttpHeader]): Table[string, string] =
+  var d: Table[string, string]
+  for h in hs:
+    d[h.key] = h.value
+  return d
+
+    
 
 func toMethod*(str: string): Option[HttpMethod] =
   case str.toUpper
