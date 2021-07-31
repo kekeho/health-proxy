@@ -194,7 +194,7 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
     host.close()
     return
 
-  await host.send(firstLine & "\r\n")
+  await host.send([fst.httpMethod.toStr, fst.path, fst.protocol].join(" ") & "\r\n")
 
   const bufsize = 1024
   var 
@@ -213,7 +213,7 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
     let h2cbuf = await host.recv(bufsize)
     await client.send(h2cbuf)
     responseRaw &= h2cbuf
-    if h2cbuf.len < bufsize:
+    if h2cbuf.len == 0:
       break
 
   if not client.isClosed:
