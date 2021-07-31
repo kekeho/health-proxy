@@ -46,6 +46,7 @@ update msg model =
                     case D.decodeString sessionDecoder message of
                         Ok session ->
                             session :: model.sessions
+                                |> List.take 3000
                         Err e ->
                             Debug.log "error" e 
                                 |> (\_ -> model.sessions)

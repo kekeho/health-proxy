@@ -6,6 +6,7 @@ import Url.Parser
 import Time
 import Json.Decode as D
 import String exposing (toUpper)
+import Dict
 
 -- Types
 
@@ -94,6 +95,21 @@ strToHttpMethod str =
 initModel : Url.Url -> Nav.Key -> Model
 initModel url key =
     Model key url []
+
+
+splitByHost : List Session -> List (String, List Session)
+splitByHost sessions =
+    let
+        hosts : List String
+        hosts = 
+            sessions
+                |> List.map (\s -> (s.toHostName, s))
+                |> Dict.fromList
+                |> Dict.keys
+                |> List.sort
+    in
+    hosts 
+        |> List.map (\h -> (h, List.filter (\s -> s.toHostName == h) sessions))
 
 
 -- Route Parser
