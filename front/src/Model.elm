@@ -5,6 +5,8 @@ import Browser.Navigation as Nav
 import Url.Parser
 import Time
 import Dict exposing (Dict)
+import Json.Decode as D
+import String exposing (toUpper)
 
 -- Types
 
@@ -18,6 +20,7 @@ type HttpMethod
     | Trace
     | Options
     | Connect
+    | Other String
 
 
 type alias ProxyHttpRequest =
@@ -63,6 +66,32 @@ type Route
 
 -- Functions
 
+
+strToHttpMethod: String -> HttpMethod
+strToHttpMethod str =
+    case toUpper str of
+        "HEAD" ->
+            Head
+        "GET" ->
+            Get
+        "POST" ->
+            Post
+        "PUT" ->
+            Put
+        "PATCH" ->
+            Patch
+        "DELETE" ->
+            Delete
+        "TRACE" ->
+            Trace
+        "OPTIONS" ->
+            Options
+        "CONNECT" ->
+            Connect
+        _ ->
+            Other str
+
+
 initModel : Url.Url -> Nav.Key -> Model
 initModel url key =
     Model key url []
@@ -74,3 +103,37 @@ routeParser : Url.Parser.Parser (Route -> a) a
 routeParser =
     Url.Parser.oneOf
         [ Url.Parser.map IndexPage Url.Parser.top ]
+
+
+-- JSON Decoder
+
+proxyHttpRequestDecoder : D.Decoder ProxyHttpRequest
+proxyHttpRequestDecoder =
+    D.map7 ProxyHttpRequest
+        (D.field "httpMethod" (D.map strToHttpMethod D.string))
+        (D.field "host" D.string)
+        (D.field "path" D.string)
+        (D.field "port" D.int)
+        (D.field "protocol" D.string)
+        (D.field "headers" (D.list (D.dict D.string)))
+        (D.field "body" D.string)
+
+
+httpResponseDecoder : D.Decoder HttpResponse
+httpResponseDecoder =
+    D.map5 HttpResponse
+        (D.field "protocol" D.string)
+        (D.field "statusCode" D.int)
+        (D.field "statusMessage" D.string)
+        (D.field "headers" (D.list (D.dict D.string)))
+        (D.field "body" D.string)
+
+
+sessionDecoder : D.Decoder Session
+sessionDecoder =
+    D.map5 Session
+        (D.field "fromHostName" D.string)
+        (D.field "toHostName" D.string)
+        (D.field "request" proxyHttpRequestDecoder)
+        (D.field "response" httpResponseDecoder)
+        (D.field "timestamp" (D.map Time.millisToPosix D.int))
