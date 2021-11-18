@@ -73,6 +73,11 @@ update msg model =
             ( { model | url = url }
             , Cmd.none
             )
+        
+        ChangeSelectedSession i ->
+            ( { model | selectedSession = Just i}
+            , Cmd.none
+            )
 
 
 subscriptions : Model.Model -> Sub Msg

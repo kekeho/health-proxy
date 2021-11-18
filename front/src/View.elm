@@ -10,6 +10,7 @@ import Json.Encode as Encode
 import Model
 import Message exposing (..)
 import Model exposing (Session)
+import Html.Events exposing (onClick)
 
 
 
@@ -117,6 +118,47 @@ headerItem (k, v) =
         ]
 
 
+listView : Time.Zone -> Maybe Int -> List Model.Session -> Html Msg
+listView tz selectedSession sessions =
+    div [ class "list-view" ]
+        [ div [ class "traffic" ]
+            [ h1 [] [ text "Traffic" ]
+            , table [] 
+                [ thead []
+                    [ tr []
+                        [ th [] [ text "Method" ]
+                        , th [] [ text "Path" ]
+                        , th [] [ text "Status" ]
+                        , th [] [ text "From" ]
+                        , th [] [ text "Time" ]
+                        ]
+                    ]
+                , tbody []
+                    (List.indexedMap (\i s -> sessionRow tz selectedSession s i) sessions)
+                ]
+            ]
+        ]
+
+
+sessionRow : Time.Zone -> Maybe Int -> Model.Session -> Int -> Html Msg
+sessionRow tz selectedSession session index =
+    let
+        selected =
+            case selectedSession of
+                Nothing ->
+                    ""
+                Just sessionId ->
+                    if sessionId == index then "selected" else ""
+    in
+    tr [ onClick <| ChangeSelectedSession index, class selected ]
+        [ td [] [ text <| Model.httpMethodToStr session.request.httpMethod ]  -- method
+        , td [] [ text <| Model.fullPath session.request ]  -- path
+        , td [] [ text <| String.fromInt session.response.statusCode ]  -- status
+        , td [] [ text session.fromHostName ] -- from
+        , td [] [ text <| toString tz session.timestamp ]
+        ]
+
+
 view : Model.Model -> Browser.Document Msg
 view model =
     { title = "health-proxy"
@@ -129,6 +171,7 @@ view model =
                         [ detailView 
                             model.timezone
                             (Maybe.andThen (\i -> getWithIndex i model.sessions ) model.selectedSession)
+                        , listView model.timezone model.selectedSession model.sessions
                         ]
                 Nothing ->
                     [ notFoundView ]
@@ -148,8 +191,8 @@ getWithIndex index lis =
 
 toString : Time.Zone -> Time.Posix -> String
 toString zone time =
-    String.fromInt (Time.toHour zone time)
+    (String.padLeft 2 '0' <| String.fromInt (Time.toHour zone time))
     ++ ":" ++
-    String.fromInt (Time.toMinute zone time)
+    (String.padLeft 2 '0' <| String.fromInt (Time.toMinute zone time))
     ++ ":" ++
-    String.fromInt (Time.toSecond zone time)
+    (String.padLeft 2 '0' <| String.fromInt (Time.toSecond zone time))

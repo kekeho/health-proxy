@@ -9,3 +9,4 @@ type Msg
     | RecvSession String
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url.Url
+    | ChangeSelectedSession Int

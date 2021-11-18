@@ -10984,12 +10984,21 @@ var $author$project$Main$update = F2(
 						model,
 						$elm$browser$Browser$Navigation$load(href));
 				}
-			default:
+			case 'UrlChanged':
 				var url = msg.a;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{url: url}),
+					$elm$core$Platform$Cmd$none);
+			default:
+				var i = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{
+							selectedSession: $elm$core$Maybe$Just(i)
+						}),
 					$elm$core$Platform$Cmd$none);
 		}
 	});
@@ -11225,6 +11234,32 @@ var $author$project$Model$statusColor = function (code) {
 			return '#606060';
 	}
 };
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
+var $elm$core$Bitwise$shiftRightBy = _Bitwise_shiftRightBy;
+var $elm$core$String$repeatHelp = F3(
+	function (n, chunk, result) {
+		return (n <= 0) ? result : A3(
+			$elm$core$String$repeatHelp,
+			n >> 1,
+			_Utils_ap(chunk, chunk),
+			(!(n & 1)) ? result : _Utils_ap(result, chunk));
+	});
+var $elm$core$String$repeat = F2(
+	function (n, chunk) {
+		return A3($elm$core$String$repeatHelp, n, chunk, '');
+	});
+var $elm$core$String$padLeft = F3(
+	function (n, _char, string) {
+		return _Utils_ap(
+			A2(
+				$elm$core$String$repeat,
+				n - $elm$core$String$length(string),
+				$elm$core$String$fromChar(_char)),
+			string);
+	});
 var $elm$time$Time$flooredDiv = F2(
 	function (numerator, denominator) {
 		return $elm$core$Basics$floor(numerator / denominator);
@@ -11299,10 +11334,22 @@ var $elm$time$Time$toSecond = F2(
 	});
 var $author$project$View$toString = F2(
 	function (zone, time) {
-		return $elm$core$String$fromInt(
-			A2($elm$time$Time$toHour, zone, time)) + (':' + ($elm$core$String$fromInt(
-			A2($elm$time$Time$toMinute, zone, time)) + (':' + $elm$core$String$fromInt(
-			A2($elm$time$Time$toSecond, zone, time)))));
+		return A3(
+			$elm$core$String$padLeft,
+			2,
+			_Utils_chr('0'),
+			$elm$core$String$fromInt(
+				A2($elm$time$Time$toHour, zone, time))) + (':' + (A3(
+			$elm$core$String$padLeft,
+			2,
+			_Utils_chr('0'),
+			$elm$core$String$fromInt(
+				A2($elm$time$Time$toMinute, zone, time))) + (':' + A3(
+			$elm$core$String$padLeft,
+			2,
+			_Utils_chr('0'),
+			$elm$core$String$fromInt(
+				A2($elm$time$Time$toSecond, zone, time))))));
 	});
 var $author$project$View$summaryView = F2(
 	function (zone, session) {
@@ -11460,6 +11507,167 @@ var $author$project$View$getWithIndex = F2(
 				A2($elm$core$List$take, index + 1, lis)));
 	});
 var $elm$html$Html$header = _VirtualDom_node('header');
+var $author$project$Message$ChangeSelectedSession = function (a) {
+	return {$: 'ChangeSelectedSession', a: a};
+};
+var $elm$html$Html$td = _VirtualDom_node('td');
+var $elm$html$Html$tr = _VirtualDom_node('tr');
+var $author$project$View$sessionRow = F4(
+	function (tz, selectedSession, session, index) {
+		var selected = function () {
+			if (selectedSession.$ === 'Nothing') {
+				return '';
+			} else {
+				var sessionId = selectedSession.a;
+				return _Utils_eq(sessionId, index) ? 'selected' : '';
+			}
+		}();
+		return A2(
+			$elm$html$Html$tr,
+			_List_fromArray(
+				[
+					$elm$html$Html$Events$onClick(
+					$author$project$Message$ChangeSelectedSession(index)),
+					$elm$html$Html$Attributes$class(selected)
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$td,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$author$project$Model$httpMethodToStr(session.request.httpMethod))
+						])),
+					A2(
+					$elm$html$Html$td,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$author$project$Model$fullPath(session.request))
+						])),
+					A2(
+					$elm$html$Html$td,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							$elm$core$String$fromInt(session.response.statusCode))
+						])),
+					A2(
+					$elm$html$Html$td,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(session.fromHostName)
+						])),
+					A2(
+					$elm$html$Html$td,
+					_List_Nil,
+					_List_fromArray(
+						[
+							$elm$html$Html$text(
+							A2($author$project$View$toString, tz, session.timestamp))
+						]))
+				]));
+	});
+var $elm$html$Html$table = _VirtualDom_node('table');
+var $elm$html$Html$tbody = _VirtualDom_node('tbody');
+var $elm$html$Html$th = _VirtualDom_node('th');
+var $elm$html$Html$thead = _VirtualDom_node('thead');
+var $author$project$View$listView = F3(
+	function (tz, selectedSession, sessions) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('list-view')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('traffic')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$h1,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Traffic')
+								])),
+							A2(
+							$elm$html$Html$table,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$elm$html$Html$thead,
+									_List_Nil,
+									_List_fromArray(
+										[
+											A2(
+											$elm$html$Html$tr,
+											_List_Nil,
+											_List_fromArray(
+												[
+													A2(
+													$elm$html$Html$th,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Method')
+														])),
+													A2(
+													$elm$html$Html$th,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Path')
+														])),
+													A2(
+													$elm$html$Html$th,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Status')
+														])),
+													A2(
+													$elm$html$Html$th,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text('From')
+														])),
+													A2(
+													$elm$html$Html$th,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text('Time')
+														]))
+												]))
+										])),
+									A2(
+									$elm$html$Html$tbody,
+									_List_Nil,
+									A2(
+										$elm$core$List$indexedMap,
+										F2(
+											function (i, s) {
+												return A4($author$project$View$sessionRow, tz, selectedSession, s, i);
+											}),
+										sessions))
+								]))
+						]))
+				]));
+	});
 var $elm$html$Html$nav = _VirtualDom_node('nav');
 var $author$project$View$navBar = A2(
 	$elm$html$Html$nav,
@@ -11696,7 +11904,8 @@ var $author$project$View$view = function (model) {
 									function (i) {
 										return A2($author$project$View$getWithIndex, i, model.sessions);
 									},
-									model.selectedSession))
+									model.selectedSession)),
+								A3($author$project$View$listView, model.timezone, model.selectedSession, model.sessions)
 							]);
 					} else {
 						return _List_fromArray(
@@ -11710,4 +11919,4 @@ var $author$project$View$view = function (model) {
 var $author$project$Main$main = $elm$browser$Browser$application(
 	{init: $author$project$Main$init, onUrlChange: $author$project$Message$UrlChanged, onUrlRequest: $author$project$Message$UrlRequested, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$View$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Message.Msg","aliases":{"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"}},"unions":{"Message.Msg":{"args":[],"tags":{"GetTimezone":["Time.Zone"],"RecvSession":["String.String"],"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"List.List":{"args":["a"],"tags":{}}}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Message.Msg","aliases":{"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"}},"unions":{"Message.Msg":{"args":[],"tags":{"GetTimezone":["Time.Zone"],"RecvSession":["String.String"],"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"],"ChangeSelectedSession":["Basics.Int"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"List.List":{"args":["a"],"tags":{}}}}})}});}(this));
