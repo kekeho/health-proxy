@@ -9,3 +9,7 @@ Under development in develop branch
 ## Overview
 
 Read the HTTP communication between containers and monitor if any 5xx error occurs.
+
+## Dependencies
+
+- nkf

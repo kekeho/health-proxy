@@ -7,11 +7,11 @@ import times
 import nativesockets
 import asynchttpserver
 import ws
-import json
 
 import types
 import sessiontable
 import ws
+import osproc
 
 # variable
 
@@ -20,6 +20,12 @@ var latestSession: SessionTable
 var socketsList: seq[WebSocket]
 
 # Function
+
+proc nkf(str: string): Option[string] =
+  let r = execCmdEx("nkf", options = {poUsePath}, input=str)
+  if r.exitCode != 0:
+    return none(string)
+  return some(r.output)
 
 
 func parseRequestFirstLine(str: string): Option[tuple[httpMethod: types.HttpMethod, host: string, port: Port, path: string, protocol: string]] =
@@ -164,7 +170,11 @@ proc broadcast(content: string) {.async.} =
 
   for socket in socketsList:
     try:
-     await socket.send(content)
+      let c = nkf(content)
+      if c.isNone:
+        continue  # TODO: send error
+      else:
+        await socket.send(c.get())
     except WebSocketClosedError:
       continue
     except WebSocketError:
