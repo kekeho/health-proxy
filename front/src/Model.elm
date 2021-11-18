@@ -56,6 +56,8 @@ type alias Model =
     { key : Nav.Key
     , url : Url.Url
     , sessions: List Session
+    , timezone: Time.Zone
+    , selectedSession : Maybe Int
     }
 
 
@@ -65,6 +67,10 @@ type Route
 
 
 -- Functions
+
+maybeIncrement : Maybe Int -> Maybe Int
+maybeIncrement maybeVal =
+    Maybe.andThen (\v -> Just (v+1)) maybeVal
 
 
 strToHttpMethod: String -> HttpMethod
@@ -92,9 +98,29 @@ strToHttpMethod str =
             Other str
 
 
+httpMethodToStr : HttpMethod -> String
+httpMethodToStr method =
+    case method of
+        Head -> "HEAD"
+        Get -> "GET"
+        Post -> "POST"
+        Put -> "PUT"
+        Patch -> "PATCH"
+        Delete -> "DELETE"
+        Trace -> "TRACE"
+        Options -> "OPTIONS"
+        Connect -> "CONNECT"
+        Other s -> s
+
+
+fullPath : ProxyHttpRequest -> String
+fullPath request =
+    request.host ++ ":" ++ (String.fromInt request.tcpPort) ++ request.path
+
+
 initModel : Url.Url -> Nav.Key -> Model
 initModel url key =
-    Model key url []
+    Model key url [] Time.utc (Just -1)
 
 
 splitByHost : List Session -> List (String, List Session)

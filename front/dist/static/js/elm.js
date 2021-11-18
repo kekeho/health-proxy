@@ -4940,6 +4940,52 @@ function _Browser_load(url)
 }
 
 
+
+function _Time_now(millisToPosix)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(millisToPosix(Date.now())));
+	});
+}
+
+var _Time_setInterval = F2(function(interval, task)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		var id = setInterval(function() { _Scheduler_rawSpawn(task); }, interval);
+		return function() { clearInterval(id); };
+	});
+});
+
+function _Time_here()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		callback(_Scheduler_succeed(
+			A2($elm$time$Time$customZone, -(new Date().getTimezoneOffset()), _List_Nil)
+		));
+	});
+}
+
+
+function _Time_getZoneName()
+{
+	return _Scheduler_binding(function(callback)
+	{
+		try
+		{
+			var name = $elm$time$Time$Name(Intl.DateTimeFormat().resolvedOptions().timeZone);
+		}
+		catch (e)
+		{
+			var name = $elm$time$Time$Offset(new Date().getTimezoneOffset());
+		}
+		callback(_Scheduler_succeed(name));
+	});
+}
+
+
 function _Url_percentEncode(string)
 {
 	return encodeURIComponent(string);
@@ -10559,19 +10605,41 @@ var $elm$core$Basics$never = function (_v0) {
 	}
 };
 var $elm$browser$Browser$application = _Browser_application;
-var $author$project$Model$Model = F3(
-	function (key, url, sessions) {
-		return {key: key, sessions: sessions, url: url};
+var $author$project$Message$GetTimezone = function (a) {
+	return {$: 'GetTimezone', a: a};
+};
+var $elm$time$Time$Name = function (a) {
+	return {$: 'Name', a: a};
+};
+var $elm$time$Time$Offset = function (a) {
+	return {$: 'Offset', a: a};
+};
+var $elm$time$Time$Zone = F2(
+	function (a, b) {
+		return {$: 'Zone', a: a, b: b};
 	});
+var $elm$time$Time$customZone = $elm$time$Time$Zone;
+var $elm$time$Time$here = _Time_here(_Utils_Tuple0);
+var $author$project$Model$Model = F5(
+	function (key, url, sessions, timezone, selectedSession) {
+		return {key: key, selectedSession: selectedSession, sessions: sessions, timezone: timezone, url: url};
+	});
+var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
 var $author$project$Model$initModel = F2(
 	function (url, key) {
-		return A3($author$project$Model$Model, key, url, _List_Nil);
+		return A5(
+			$author$project$Model$Model,
+			key,
+			url,
+			_List_Nil,
+			$elm$time$Time$utc,
+			$elm$core$Maybe$Just(-1));
 	});
 var $author$project$Main$init = F3(
 	function (flags, url, key) {
 		return _Utils_Tuple2(
 			A2($author$project$Model$initModel, url, key),
-			$elm$core$Platform$Cmd$none);
+			A2($elm$core$Task$perform, $author$project$Message$GetTimezone, $elm$time$Time$here));
 	});
 var $author$project$Message$RecvSession = function (a) {
 	return {$: 'RecvSession', a: a};
@@ -10582,6 +10650,23 @@ var $author$project$Main$subscriptions = function (model) {
 };
 var $elm$browser$Browser$Navigation$load = _Browser_load;
 var $elm$core$Debug$log = _Debug_log;
+var $elm$core$Maybe$andThen = F2(
+	function (callback, maybeValue) {
+		if (maybeValue.$ === 'Just') {
+			var value = maybeValue.a;
+			return callback(value);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $author$project$Model$maybeIncrement = function (maybeVal) {
+	return A2(
+		$elm$core$Maybe$andThen,
+		function (v) {
+			return $elm$core$Maybe$Just(v + 1);
+		},
+		maybeVal);
+};
 var $elm$browser$Browser$Navigation$pushUrl = _Browser_pushUrl;
 var $author$project$Model$Session = F5(
 	function (fromHostName, toHostName, request, response, timestamp) {
@@ -10849,28 +10934,39 @@ var $elm$url$Url$toString = function (url) {
 var $author$project$Main$update = F2(
 	function (msg, model) {
 		switch (msg.$) {
+			case 'GetTimezone':
+				var zone = msg.a;
+				return _Utils_Tuple2(
+					_Utils_update(
+						model,
+						{timezone: zone}),
+					$elm$core$Platform$Cmd$none);
 			case 'RecvSession':
 				var message = msg.a;
-				var newSessionList = function () {
-					var _v1 = A2($elm$json$Json$Decode$decodeString, $author$project$Model$sessionDecoder, message);
-					if (_v1.$ === 'Ok') {
-						var session = _v1.a;
-						return A2(
-							$elm$core$List$take,
-							3000,
-							A2($elm$core$List$cons, session, model.sessions));
+				var _v1 = function () {
+					var _v2 = A2($elm$json$Json$Decode$decodeString, $author$project$Model$sessionDecoder, message);
+					if (_v2.$ === 'Ok') {
+						var session = _v2.a;
+						return _Utils_Tuple2(
+							A2(
+								$elm$core$List$take,
+								3000,
+								A2($elm$core$List$cons, session, model.sessions)),
+							$author$project$Model$maybeIncrement(model.selectedSession));
 					} else {
-						var e = _v1.a;
-						return function (_v2) {
-							return model.sessions;
+						var e = _v2.a;
+						return function (_v3) {
+							return _Utils_Tuple2(model.sessions, model.selectedSession);
 						}(
 							A2($elm$core$Debug$log, 'error', e));
 					}
 				}();
+				var newSessionList = _v1.a;
+				var selectedSession = _v1.b;
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{sessions: newSessionList}),
+						{selectedSession: selectedSession, sessions: newSessionList}),
 					$elm$core$Platform$Cmd$none);
 			case 'UrlRequested':
 				var urlRequest = msg.a;
@@ -10897,67 +10993,41 @@ var $author$project$Main$update = F2(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $elm$html$Html$h1 = _VirtualDom_node('h1');
-var $author$project$View$errorsView = A2(
-	$elm$html$Html$div,
-	_List_fromArray(
-		[
-			$elm$html$Html$Attributes$class('errors')
-		]),
-	_List_fromArray(
-		[
-			A2(
-			$elm$html$Html$h1,
-			_List_Nil,
-			_List_fromArray(
-				[
-					$elm$html$Html$text('Errors')
-				]))
-		]));
-var $elm$html$Html$header = _VirtualDom_node('header');
+var $elm$html$Html$details = _VirtualDom_node('details');
 var $elm$html$Html$h2 = _VirtualDom_node('h2');
-var $elm$html$Html$td = _VirtualDom_node('td');
-var $elm$html$Html$tr = _VirtualDom_node('tr');
-var $author$project$View$sessionView = function (session) {
+var $author$project$View$headerItem = function (_v0) {
+	var k = _v0.a;
+	var v = _v0.b;
 	return A2(
-		$elm$html$Html$tr,
+		$elm$html$Html$li,
 		_List_Nil,
 		_List_fromArray(
 			[
 				A2(
-				$elm$html$Html$td,
+				$elm$html$Html$span,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(session.fromHostName)
+						$elm$html$Html$text(k)
 					])),
+				$elm$html$Html$text(': '),
 				A2(
-				$elm$html$Html$td,
+				$elm$html$Html$span,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(
-						$elm$core$String$fromInt(session.response.statusCode))
-					])),
-				A2(
-				$elm$html$Html$td,
-				_List_Nil,
-				_List_fromArray(
-					[
-						$elm$html$Html$text(session.request.path)
+						$elm$html$Html$text(v)
 					]))
 			]));
 };
-var $elm$html$Html$table = _VirtualDom_node('table');
-var $elm$html$Html$tbody = _VirtualDom_node('tbody');
-var $author$project$View$hostView = function (_v0) {
-	var toHostName = _v0.a;
-	var sessions = _v0.b;
+var $elm$html$Html$summary = _VirtualDom_node('summary');
+var $elm$html$Html$textarea = _VirtualDom_node('textarea');
+var $author$project$View$requestView = function (request) {
 	return A2(
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('host')
+				$elm$html$Html$Attributes$class('request')
 			]),
 		_List_fromArray(
 			[
@@ -10966,87 +11036,374 @@ var $author$project$View$hostView = function (_v0) {
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text(toHostName)
+						$elm$html$Html$text('Request')
 					])),
 				A2(
-				$elm$html$Html$table,
-				_List_Nil,
+				$elm$html$Html$details,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('headers')
+					]),
 				_List_fromArray(
 					[
 						A2(
-						$elm$html$Html$tbody,
+						$elm$html$Html$summary,
 						_List_Nil,
-						A2($elm$core$List$map, $author$project$View$sessionView, sessions))
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Headers')
+							])),
+						A2(
+						$elm$html$Html$ul,
+						_List_Nil,
+						A2($elm$core$List$map, $author$project$View$headerItem, request.headers))
+					])),
+				A2(
+				$elm$html$Html$details,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('body')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$summary,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Body')
+							])),
+						A2(
+						$elm$html$Html$textarea,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(request.body)
+							]))
 					]))
 			]));
 };
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$core$List$sortBy = _List_sortBy;
-var $elm$core$List$sort = function (xs) {
-	return A2($elm$core$List$sortBy, $elm$core$Basics$identity, xs);
-};
-var $author$project$Model$splitByHost = function (sessions) {
-	var hosts = $elm$core$List$sort(
-		$elm$core$Dict$keys(
-			$elm$core$Dict$fromList(
-				A2(
-					$elm$core$List$map,
-					function (s) {
-						return _Utils_Tuple2(s.toHostName, s);
-					},
-					sessions))));
-	return A2(
-		$elm$core$List$map,
-		function (h) {
-			return _Utils_Tuple2(
-				h,
-				A2(
-					$elm$core$List$filter,
-					function (s) {
-						return _Utils_eq(s.toHostName, h);
-					},
-					sessions));
-		},
-		hosts);
-};
-var $author$project$View$hostsView = function (sessions) {
+var $author$project$View$responseView = function (response) {
 	return A2(
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$class('hosts')
+				$elm$html$Html$Attributes$class('response')
 			]),
 		_List_fromArray(
 			[
 				A2(
-				$elm$html$Html$h1,
+				$elm$html$Html$h2,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$elm$html$Html$text('Hosts')
+						$elm$html$Html$text('Response')
 					])),
 				A2(
+				$elm$html$Html$details,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('headers')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$summary,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Headers')
+							])),
+						A2(
+						$elm$html$Html$ul,
+						_List_Nil,
+						A2($elm$core$List$map, $author$project$View$headerItem, response.headers))
+					])),
+				A2(
+				$elm$html$Html$details,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('body')
+					]),
+				_List_fromArray(
+					[
+						A2(
+						$elm$html$Html$summary,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text('Body')
+							])),
+						A2(
+						$elm$html$Html$textarea,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$text(response.body)
+							]))
+					]))
+			]));
+};
+var $author$project$Model$fullPath = function (request) {
+	return request.host + (':' + ($elm$core$String$fromInt(request.tcpPort) + request.path));
+};
+var $elm$html$Html$h1 = _VirtualDom_node('h1');
+var $author$project$Model$httpMethodToStr = function (method) {
+	switch (method.$) {
+		case 'Head':
+			return 'HEAD';
+		case 'Get':
+			return 'GET';
+		case 'Post':
+			return 'POST';
+		case 'Put':
+			return 'PUT';
+		case 'Patch':
+			return 'PATCH';
+		case 'Delete':
+			return 'DELETE';
+		case 'Trace':
+			return 'TRACE';
+		case 'Options':
+			return 'OPTIONS';
+		case 'Connect':
+			return 'CONNECT';
+		default:
+			var s = method.a;
+			return s;
+	}
+};
+var $elm$time$Time$flooredDiv = F2(
+	function (numerator, denominator) {
+		return $elm$core$Basics$floor(numerator / denominator);
+	});
+var $elm$core$Basics$modBy = _Basics_modBy;
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
+var $elm$time$Time$toAdjustedMinutesHelp = F3(
+	function (defaultOffset, posixMinutes, eras) {
+		toAdjustedMinutesHelp:
+		while (true) {
+			if (!eras.b) {
+				return posixMinutes + defaultOffset;
+			} else {
+				var era = eras.a;
+				var olderEras = eras.b;
+				if (_Utils_cmp(era.start, posixMinutes) < 0) {
+					return posixMinutes + era.offset;
+				} else {
+					var $temp$defaultOffset = defaultOffset,
+						$temp$posixMinutes = posixMinutes,
+						$temp$eras = olderEras;
+					defaultOffset = $temp$defaultOffset;
+					posixMinutes = $temp$posixMinutes;
+					eras = $temp$eras;
+					continue toAdjustedMinutesHelp;
+				}
+			}
+		}
+	});
+var $elm$time$Time$toAdjustedMinutes = F2(
+	function (_v0, time) {
+		var defaultOffset = _v0.a;
+		var eras = _v0.b;
+		return A3(
+			$elm$time$Time$toAdjustedMinutesHelp,
+			defaultOffset,
+			A2(
+				$elm$time$Time$flooredDiv,
+				$elm$time$Time$posixToMillis(time),
+				60000),
+			eras);
+	});
+var $elm$time$Time$toHour = F2(
+	function (zone, time) {
+		return A2(
+			$elm$core$Basics$modBy,
+			24,
+			A2(
+				$elm$time$Time$flooredDiv,
+				A2($elm$time$Time$toAdjustedMinutes, zone, time),
+				60));
+	});
+var $elm$time$Time$toMinute = F2(
+	function (zone, time) {
+		return A2(
+			$elm$core$Basics$modBy,
+			60,
+			A2($elm$time$Time$toAdjustedMinutes, zone, time));
+	});
+var $elm$time$Time$toSecond = F2(
+	function (_v0, time) {
+		return A2(
+			$elm$core$Basics$modBy,
+			60,
+			A2(
+				$elm$time$Time$flooredDiv,
+				$elm$time$Time$posixToMillis(time),
+				1000));
+	});
+var $author$project$View$toString = F2(
+	function (zone, time) {
+		return $elm$core$String$fromInt(
+			A2($elm$time$Time$toHour, zone, time)) + (':' + ($elm$core$String$fromInt(
+			A2($elm$time$Time$toMinute, zone, time)) + (':' + $elm$core$String$fromInt(
+			A2($elm$time$Time$toSecond, zone, time)))));
+	});
+var $author$project$View$summaryView = F2(
+	function (zone, session) {
+		return A2(
+			$elm$html$Html$div,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$class('summary')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					$elm$html$Html$h1,
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('method')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									$author$project$Model$httpMethodToStr(session.request.httpMethod))
+								])),
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('path')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									$author$project$Model$fullPath(session.request))
+								]))
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('status')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('code')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									$elm$core$String$fromInt(session.response.statusCode))
+								])),
+							A2(
+							$elm$html$Html$span,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$class('message')
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text(session.response.statusMessage)
+								]))
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('route')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('From: ' + session.fromHostName)
+								])),
+							A2(
+							$elm$html$Html$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text('To: ' + session.toHostName)
+								]))
+						])),
+					A2(
+					$elm$html$Html$div,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$class('time')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							$elm$html$Html$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$elm$html$Html$text(
+									A2($author$project$View$toString, zone, session.timestamp))
+								]))
+						]))
+				]));
+	});
+var $author$project$View$detailView = F2(
+	function (zone, maybeSession) {
+		if (maybeSession.$ === 'Nothing') {
+			return A2(
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('container')
+						$elm$html$Html$Attributes$class('detail-view')
 					]),
-				A2(
-					$elm$core$List$map,
-					$author$project$View$hostView,
-					$author$project$Model$splitByHost(sessions)))
-			]));
+				_List_Nil);
+		} else {
+			var session = maybeSession.a;
+			return A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('detail-view')
+					]),
+				_List_fromArray(
+					[
+						A2($author$project$View$summaryView, zone, session),
+						$author$project$View$requestView(session.request),
+						$author$project$View$responseView(session.response)
+					]));
+		}
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
 };
+var $author$project$View$getWithIndex = F2(
+	function (index, lis) {
+		return $elm$core$List$head(
+			$elm$core$List$reverse(
+				A2($elm$core$List$take, index + 1, lis)));
+	});
+var $elm$html$Html$header = _VirtualDom_node('header');
 var $elm$html$Html$nav = _VirtualDom_node('nav');
 var $author$project$View$navBar = A2(
 	$elm$html$Html$nav,
@@ -11283,8 +11640,15 @@ var $author$project$View$view = function (model) {
 									]),
 								_List_fromArray(
 									[
-										$author$project$View$errorsView,
-										$author$project$View$hostsView(model.sessions)
+										A2(
+										$author$project$View$detailView,
+										model.timezone,
+										A2(
+											$elm$core$Maybe$andThen,
+											function (i) {
+												return A2($author$project$View$getWithIndex, i, model.sessions);
+											},
+											model.selectedSession))
 									]));
 						} else {
 							return $author$project$View$notFoundView;
@@ -11298,4 +11662,4 @@ var $author$project$View$view = function (model) {
 var $author$project$Main$main = $elm$browser$Browser$application(
 	{init: $author$project$Main$init, onUrlChange: $author$project$Message$UrlChanged, onUrlRequest: $author$project$Message$UrlRequested, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$View$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Message.Msg","aliases":{"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"}},"unions":{"Message.Msg":{"args":[],"tags":{"RecvSession":["String.String"],"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}}}}})}});}(this));
+	$elm$json$Json$Decode$succeed(_Utils_Tuple0))({"versions":{"elm":"0.19.1"},"types":{"message":"Message.Msg","aliases":{"Url.Url":{"args":[],"type":"{ protocol : Url.Protocol, host : String.String, port_ : Maybe.Maybe Basics.Int, path : String.String, query : Maybe.Maybe String.String, fragment : Maybe.Maybe String.String }"},"Time.Era":{"args":[],"type":"{ start : Basics.Int, offset : Basics.Int }"}},"unions":{"Message.Msg":{"args":[],"tags":{"GetTimezone":["Time.Zone"],"RecvSession":["String.String"],"UrlRequested":["Browser.UrlRequest"],"UrlChanged":["Url.Url"]}},"Basics.Int":{"args":[],"tags":{"Int":[]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Url.Protocol":{"args":[],"tags":{"Http":[],"Https":[]}},"String.String":{"args":[],"tags":{"String":[]}},"Browser.UrlRequest":{"args":[],"tags":{"Internal":["Url.Url"],"External":["String.String"]}},"Time.Zone":{"args":[],"tags":{"Zone":["Basics.Int","List.List Time.Era"]}},"List.List":{"args":["a"],"tags":{}}}}})}});}(this));

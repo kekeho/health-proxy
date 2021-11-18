@@ -12,6 +12,8 @@ import Message exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Model exposing (sessionDecoder)
+import Time
+import Task
 
 
 main : Program () Model.Model Msg
@@ -34,24 +36,30 @@ port sessionReciever : (String -> msg) -> Sub msg
 
 init : flags -> Url.Url -> Nav.Key -> ( Model.Model, Cmd Msg )
 init flags url key =
-    ( Model.initModel url key, Cmd.none )
+    ( Model.initModel url key, Task.perform GetTimezone Time.here )
 
 
 update : Msg -> Model.Model -> ( Model.Model, Cmd Msg )
 update msg model =
     case msg of
+        GetTimezone zone ->
+            ({ model | timezone = zone}, Cmd.none)
         RecvSession message ->
             let
-                newSessionList =
+                (newSessionList, selectedSession) =
                     case D.decodeString sessionDecoder message of
                         Ok session ->
-                            session :: model.sessions
+                            ( session :: model.sessions
                                 |> List.take 3000
+                            , Model.maybeIncrement model.selectedSession
+                            )
                         Err e ->
                             Debug.log "error" e 
-                                |> (\_ -> model.sessions)
+                                |> \_ -> (model.sessions, model.selectedSession)
             in
-            ( { model | sessions = newSessionList }, Cmd.none )
+            ( { model | sessions = newSessionList, selectedSession = selectedSession }
+            , Cmd.none
+            )
 
         UrlRequested urlRequest ->
             case urlRequest of

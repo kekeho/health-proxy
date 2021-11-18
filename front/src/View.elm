@@ -4,6 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Browser
 import Url.Parser
+import Time
 
 import Model
 import Message exposing (..)
@@ -25,35 +26,6 @@ notFoundView =
         [ text "Page Not Found."]
 
 
-errorsView : Html msg
-errorsView =
-    div [ class "errors" ]
-        [ h1 [] [ text "Errors"]
-        ]
-
-
-hostsView : List Session -> Html msg
-hostsView sessions =
-    div [ class "hosts" ]
-        [ h1 [] [ text "Hosts" ]
-        , div [ class "container" ]
-            (Model.splitByHost sessions
-                |> List.map hostView)
-        ]
-
-
-hostView : (String, List Session) -> Html msg
-hostView (toHostName, sessions) =
-    div [ class "host" ]
-        [ h2 [] [ text toHostName ]
-        , table []
-            [ tbody []
-                (List.map sessionView <| List.take 5 sessions)
-            ]
-            
-        ]
-
-
 sessionView : Session -> Html msg
 sessionView session =
     tr [ ]
@@ -61,6 +33,84 @@ sessionView session =
         , td [] [ text <| String.fromInt session.response.statusCode ]
         , td [] [ text session.request.path ]
         ]
+
+
+detailView : Time.Zone -> Maybe Session -> Html msg
+detailView zone maybeSession =
+    case maybeSession of
+        Nothing ->
+            div [ class "detail-view" ]
+                []
+        Just session ->
+            div [ class "detail-view" ]
+                [ summaryView zone session
+                , requestView session.request
+                , responseView session.response
+                ]
+
+summaryView : Time.Zone -> Model.Session -> Html msg
+summaryView zone session =
+    div [ class "summary" ]
+        [ h1 []
+            [ span [ class "method" ] [ text <| Model.httpMethodToStr session.request.httpMethod ]
+            , span [ class "path" ] [ text <| Model.fullPath session.request ]
+            ]
+        , div [ class "status" ]
+            [ span [ class "code" ] [ text <| String.fromInt session.response.statusCode ]
+            , span [ class "message" ] [ text session.response.statusMessage ]
+            ]
+        , div [ class "route" ]
+            [ p [] [ text <| "From: " ++ session.fromHostName ]
+            , p [] [ text <| "To: " ++ session.toHostName ]
+            ]
+        , div [ class "time" ]
+            [ p [] [ text <| toString zone session.timestamp ]
+            ]
+        ]
+
+
+requestView : Model.ProxyHttpRequest -> Html msg
+requestView request =
+    div [ class "request" ]
+        [ h2 [] [ text "Request" ]
+        , details [ class "headers" ]
+            [ summary [] [ text "Headers" ]
+            , ul []
+                (List.map headerItem request.headers)
+            ]
+        , details [ class "body" ]
+            [ summary [] [ text "Body" ]
+            , textarea []
+                [ text request.body ]
+            ]
+        ]
+
+
+responseView : Model.HttpResponse -> Html msg
+responseView response =
+    div [ class "response" ]
+        [ h2 [] [ text "Response" ]
+        , details [ class "headers" ]
+            [ summary [] [ text "Headers" ]
+            , ul []
+                (List.map headerItem response.headers)
+            ]
+        , details [ class "body" ]
+            [ summary [] [ text "Body" ]
+            , textarea []
+                [ text response.body ]
+            ]
+        ]
+
+
+headerItem : (String, String) -> Html msg
+headerItem (k, v) =
+    li []
+        [ span [] [ text k ]
+        , text ": "
+        , span [] [ text v ]
+        ]
+
 
 view : Model.Model -> Browser.Document Msg
 view model =
@@ -72,11 +122,30 @@ view model =
             [ case Url.Parser.parse Model.routeParser model.url of
                 Just Model.IndexPage ->
                     div [ class "panel" ]
-                        [ errorsView
-                        , hostsView model.sessions
+                        [ detailView 
+                            model.timezone
+                            (Maybe.andThen (\i -> getWithIndex i model.sessions ) model.selectedSession)
                         ]
                 Nothing ->
                     notFoundView
             ]
         ]
     }
+
+
+-- Utils
+
+getWithIndex : Int -> List a -> Maybe a
+getWithIndex index lis =
+    List.take (index+1) lis
+        |> List.reverse
+        |> List.head
+
+
+toString : Time.Zone -> Time.Posix -> String
+toString zone time =
+    String.fromInt (Time.toHour zone time)
+    ++ ":" ++
+    String.fromInt (Time.toMinute zone time)
+    ++ ":" ++
+    String.fromInt (Time.toSecond zone time)
