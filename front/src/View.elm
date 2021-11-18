@@ -19,6 +19,10 @@ navBar =
     nav [ class "navigation" ]
         [ div [ class "title" ]
             [ text "health-proxy" ]
+        , div [ class "links" ]
+            [ a [ class "github", href "https://github.com/kekeho/health-proxy" ]
+                [ text "GitHub" ]
+            ]
         ]
 
 

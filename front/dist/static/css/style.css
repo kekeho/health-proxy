@@ -27,6 +27,16 @@ nav .title {
     height: min-content;
 }
 
+nav .links {
+    position: fixed;
+    right: 1rem;
+}
+
+nav a {
+    text-decoration: none;
+    color: #363636;
+}
+
 .app {
     margin: 0 1rem;
     display: flex;
