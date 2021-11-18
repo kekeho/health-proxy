@@ -80,13 +80,9 @@ proc newErrorSession(session = Session()): ErrorSession =
 proc `[]=`*(t: var SessionTable, key: SessionTableKey, val: Session) =
   # record 5xx, 400, 405, 411, 412, 413, 414, 415, 417, 418, 421, 429, 431 error
   var recordFlag: bool = false
-  if int(val.response.statusCode.int / 100) == 5:
+  if int(val.response.statusCode.int / 100) in [4, 5]:
     recordFlag = true
-  elif val.response.statusCode.int in [
-    400, 405, 411, 412, 413, 414, 415, 417, 418, 421, 429, 431
-  ]: 
-    recordFlag = true
-  
+
   if recordFlag:
     var errorSession: ErrorSession = newErrorSession(val)
     with dbConn:
