@@ -27,40 +27,86 @@ nav .title {
     height: min-content;
 }
 
-.app .panel {
-    padding: 1rem;
-}
-
-.app .panel h1 {
-    font-size: 1.6rem;
-    font-weight: 700;
-    border-bottom: 1px solid #c7c7c7;
-}
-
-.app .panel h2 {
-    font-size: 1rem;
-    overflow: hidden;
-}
-
-.app .container {
+.app {
+    margin: 1rem;
     display: flex;
     flex-wrap: wrap;
 }
 
-
-.app .host {
-    width: 15rem;
-    height: 15rem;
-
-    margin: 1rem;
-
-    border: solid 1px #929292;
+.app h1 {
+    overflow-wrap: break-word;
+    font-size: 2rem;
+    font-weight: bold;
 }
 
-.host table {
+.app h2 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-bottom: solid #8b8b8b 1px;
+}
+
+.app summary {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+
+
+/* detail-view */
+
+.detail-view {
+    min-width: 50rem;
     width: 100%;
 }
 
-.host table tbody tr td {
-    margin: 0 0.5rem;
+.detail-view .summary p,h1 {
+    margin: 0.5rem 0;
+}
+
+.detail-view .summary h1 span.method {
+    background-color: #dadada;
+    padding: 0 0.5rem;
+    border-radius: 5px 0 0 5px;
+}
+
+.detail-view .summary h1 span.path {
+    background-color: #363636;
+    color: #ffffff;
+    padding: 0 0.5rem;
+    border-radius: 0 5px 5px 0;
+}
+
+.detail-view .summary .status {
+    font-size: 1.5rem;
+}
+
+.detail-view .summary .status span {
+    padding: 0 0.3rem;
+}
+
+.detail-view .summary .status span.code {
+    font-weight: bold;
+    color: #ffffff;
+    border-radius: 5px 0 0 5px;
+}
+
+.detail-view .summary .status span.message {
+    background-color: #dadada;
+    border-radius: 0 5px 5px 0;
+}
+
+.detail-view .summary .route {
+    margin: 0.5rem 0;
+}
+
+.detail-view .summary .route p {
+    display: inline;
+    margin-right: 1rem;
+}
+
+
+.detail-view textarea {
+    width: 100%;
+    height: 20rem;
+    resize: none;
 }

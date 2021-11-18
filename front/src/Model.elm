@@ -68,6 +68,19 @@ type Route
 
 -- Functions
 
+
+statusColor : Int -> String
+statusColor code =
+    case code // 100 of
+        2 ->
+            "#6bd926"
+        4 ->
+            "#ff0000"
+        5 ->
+            "#ffb100"
+        _ ->
+            "#606060"
+
 maybeIncrement : Maybe Int -> Maybe Int
 maybeIncrement maybeVal =
     Maybe.andThen (\v -> Just (v+1)) maybeVal

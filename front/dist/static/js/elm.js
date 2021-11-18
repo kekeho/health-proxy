@@ -11010,7 +11010,7 @@ var $author$project$View$headerItem = function (_v0) {
 					[
 						$elm$html$Html$text(k)
 					])),
-				$elm$html$Html$text(': '),
+				$elm$html$Html$text(' : '),
 				A2(
 				$elm$html$Html$span,
 				_List_Nil,
@@ -11020,6 +11020,23 @@ var $author$project$View$headerItem = function (_v0) {
 					]))
 			]));
 };
+var $elm$virtual_dom$VirtualDom$property = F2(
+	function (key, value) {
+		return A2(
+			_VirtualDom_property,
+			_VirtualDom_noInnerHtmlOrFormAction(key),
+			_VirtualDom_noJavaScriptOrHtmlUri(value));
+	});
+var $elm$html$Html$Attributes$property = $elm$virtual_dom$VirtualDom$property;
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
+	});
+var $elm$html$Html$Attributes$readonly = $elm$html$Html$Attributes$boolProperty('readOnly');
 var $elm$html$Html$summary = _VirtualDom_node('summary');
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
 var $author$project$View$requestView = function (request) {
@@ -11042,7 +11059,11 @@ var $author$project$View$requestView = function (request) {
 				$elm$html$Html$details,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('headers')
+						$elm$html$Html$Attributes$class('headers'),
+						A2(
+						$elm$html$Html$Attributes$property,
+						'open',
+						$elm$json$Json$Encode$string('true'))
 					]),
 				_List_fromArray(
 					[
@@ -11062,7 +11083,11 @@ var $author$project$View$requestView = function (request) {
 				$elm$html$Html$details,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('body')
+						$elm$html$Html$Attributes$class('body'),
+						A2(
+						$elm$html$Html$Attributes$property,
+						'open',
+						$elm$json$Json$Encode$string('true'))
 					]),
 				_List_fromArray(
 					[
@@ -11075,7 +11100,10 @@ var $author$project$View$requestView = function (request) {
 							])),
 						A2(
 						$elm$html$Html$textarea,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$readonly(true)
+							]),
 						_List_fromArray(
 							[
 								$elm$html$Html$text(request.body)
@@ -11103,7 +11131,11 @@ var $author$project$View$responseView = function (response) {
 				$elm$html$Html$details,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('headers')
+						$elm$html$Html$Attributes$class('headers'),
+						A2(
+						$elm$html$Html$Attributes$property,
+						'open',
+						$elm$json$Json$Encode$string('true'))
 					]),
 				_List_fromArray(
 					[
@@ -11123,7 +11155,11 @@ var $author$project$View$responseView = function (response) {
 				$elm$html$Html$details,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$class('body')
+						$elm$html$Html$Attributes$class('body'),
+						A2(
+						$elm$html$Html$Attributes$property,
+						'open',
+						$elm$json$Json$Encode$string('true'))
 					]),
 				_List_fromArray(
 					[
@@ -11136,7 +11172,10 @@ var $author$project$View$responseView = function (response) {
 							])),
 						A2(
 						$elm$html$Html$textarea,
-						_List_Nil,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$readonly(true)
+							]),
 						_List_fromArray(
 							[
 								$elm$html$Html$text(response.body)
@@ -11171,6 +11210,19 @@ var $author$project$Model$httpMethodToStr = function (method) {
 		default:
 			var s = method.a;
 			return s;
+	}
+};
+var $author$project$Model$statusColor = function (code) {
+	var _v0 = (code / 100) | 0;
+	switch (_v0) {
+		case 2:
+			return '#6bd926';
+		case 4:
+			return '#ff0000';
+		case 5:
+			return '#ffb100';
+		default:
+			return '#606060';
 	}
 };
 var $elm$time$Time$flooredDiv = F2(
@@ -11291,7 +11343,7 @@ var $author$project$View$summaryView = F2(
 								]))
 						])),
 					A2(
-					$elm$html$Html$div,
+					$elm$html$Html$p,
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$class('status')
@@ -11302,7 +11354,11 @@ var $author$project$View$summaryView = F2(
 							$elm$html$Html$span,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$class('code')
+									$elm$html$Html$Attributes$class('code'),
+									A2(
+									$elm$html$Html$Attributes$style,
+									'background-color',
+									$author$project$Model$statusColor(session.response.statusCode))
 								]),
 							_List_fromArray(
 								[
@@ -11626,35 +11682,27 @@ var $author$project$View$view = function (model) {
 					[
 						$elm$html$Html$Attributes$class('app')
 					]),
-				_List_fromArray(
-					[
-						function () {
-						var _v0 = A2($elm$url$Url$Parser$parse, $author$project$Model$routeParser, model.url);
-						if (_v0.$ === 'Just') {
-							var _v1 = _v0.a;
-							return A2(
-								$elm$html$Html$div,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$class('panel')
-									]),
-								_List_fromArray(
-									[
-										A2(
-										$author$project$View$detailView,
-										model.timezone,
-										A2(
-											$elm$core$Maybe$andThen,
-											function (i) {
-												return A2($author$project$View$getWithIndex, i, model.sessions);
-											},
-											model.selectedSession))
-									]));
-						} else {
-							return $author$project$View$notFoundView;
-						}
-					}()
-					]))
+				function () {
+					var _v0 = A2($elm$url$Url$Parser$parse, $author$project$Model$routeParser, model.url);
+					if (_v0.$ === 'Just') {
+						var _v1 = _v0.a;
+						return _List_fromArray(
+							[
+								A2(
+								$author$project$View$detailView,
+								model.timezone,
+								A2(
+									$elm$core$Maybe$andThen,
+									function (i) {
+										return A2($author$project$View$getWithIndex, i, model.sessions);
+									},
+									model.selectedSession))
+							]);
+					} else {
+						return _List_fromArray(
+							[$author$project$View$notFoundView]);
+					}
+				}())
 			]),
 		title: 'health-proxy'
 	};

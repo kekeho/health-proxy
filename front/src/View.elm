@@ -5,6 +5,7 @@ import Html.Attributes exposing (..)
 import Browser
 import Url.Parser
 import Time
+import Json.Encode as Encode
 
 import Model
 import Message exposing (..)
@@ -55,8 +56,12 @@ summaryView zone session =
             [ span [ class "method" ] [ text <| Model.httpMethodToStr session.request.httpMethod ]
             , span [ class "path" ] [ text <| Model.fullPath session.request ]
             ]
-        , div [ class "status" ]
-            [ span [ class "code" ] [ text <| String.fromInt session.response.statusCode ]
+        , p [ class "status" ]
+            [ span
+                [ class "code" 
+                , style "background-color" (Model.statusColor session.response.statusCode)
+                ]
+                [ text <| String.fromInt session.response.statusCode ]
             , span [ class "message" ] [ text session.response.statusMessage ]
             ]
         , div [ class "route" ]
@@ -73,14 +78,14 @@ requestView : Model.ProxyHttpRequest -> Html msg
 requestView request =
     div [ class "request" ]
         [ h2 [] [ text "Request" ]
-        , details [ class "headers" ]
+        , details [ class "headers", property "open" (Encode.string "true") ]
             [ summary [] [ text "Headers" ]
             , ul []
                 (List.map headerItem request.headers)
             ]
-        , details [ class "body" ]
+        , details [ class "body", property "open" (Encode.string "true") ]
             [ summary [] [ text "Body" ]
-            , textarea []
+            , textarea [ readonly True ]
                 [ text request.body ]
             ]
         ]
@@ -90,14 +95,14 @@ responseView : Model.HttpResponse -> Html msg
 responseView response =
     div [ class "response" ]
         [ h2 [] [ text "Response" ]
-        , details [ class "headers" ]
+        , details [ class "headers", property "open" (Encode.string "true") ]
             [ summary [] [ text "Headers" ]
             , ul []
                 (List.map headerItem response.headers)
             ]
-        , details [ class "body" ]
+        , details [ class "body", property "open" (Encode.string "true") ]
             [ summary [] [ text "Body" ]
-            , textarea []
+            , textarea [ readonly True ]
                 [ text response.body ]
             ]
         ]
@@ -107,7 +112,7 @@ headerItem : (String, String) -> Html msg
 headerItem (k, v) =
     li []
         [ span [] [ text k ]
-        , text ": "
+        , text " : "
         , span [] [ text v ]
         ]
 
@@ -119,16 +124,15 @@ view model =
         [ header []
             [ navBar ]
         , div [ class "app"]
-            [ case Url.Parser.parse Model.routeParser model.url of
+            ( case Url.Parser.parse Model.routeParser model.url of
                 Just Model.IndexPage ->
-                    div [ class "panel" ]
                         [ detailView 
                             model.timezone
                             (Maybe.andThen (\i -> getWithIndex i model.sessions ) model.selectedSession)
                         ]
                 Nothing ->
-                    notFoundView
-            ]
+                    [ notFoundView ]
+            )
         ]
     }
 
