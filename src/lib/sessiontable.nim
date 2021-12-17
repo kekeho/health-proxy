@@ -8,6 +8,7 @@ import strutils
 import json
 import options
 import nativesockets
+import strformat
 
 # types
 
@@ -126,10 +127,10 @@ proc toSession(dbSession: DBSession): Option[Session] =
   ))
 
 
-proc getSessionsFromDB*(offset: int = 0, limit: Option[int] = none(int)): seq[Session] =
+proc getSessionsFromDB*(offset: int = 0, limit: int = 1000): seq[Session] =
   var sessions: seq[DBSession] = @[DBSession()]
-  dbConn.selectAll(sessions)
-  
+  dbConn.select(sessions, fmt"1 ORDER BY timestamp DESC LIMIT ? OFFSET ?", limit, offset)
+
   var res: seq[Session]
   for db_s in sessions:
     let s = db_s.toSession()
