@@ -49,6 +49,16 @@ func toTable*(hs: seq[HttpHeader]): Table[string, string] =
     d[h.key] = h.value
   return d
 
+
+func fromTable*(table: Table[string, string]): seq[HttpHeader] =
+  var res: seq[HttpHeader]
+
+  for k, v in table.pairs:
+    let h = (key: k, value: v)
+    res.add(h)
+
+  return res
+
     
 
 func toMethod*(str: string): Option[HttpMethod] =
@@ -98,9 +108,9 @@ func toStr*(m: HttpMethod): string =
 
 
 func toJson*(headers: seq[HttpHeader]): string =
-  var headersList: seq[string]
+  # build json-string
+  var headersList: Table[string, string]
   for header in headers:
-    let s = "{\"" & header.key & "\":\"" & header.value & "\"}"
-    headersList.add(s)
+    headersList[header.key] = header.value
   
-  return "[" & headersList.join(",") & "]"
+  return $headersList

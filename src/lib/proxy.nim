@@ -168,9 +168,10 @@ func httpResponseParser(rawData: string): Option[HttpResponse] =
 proc broadcast(content: string) {.async.} =
   var newSocketsList: seq[WebSocket]
 
+  let c = nkf(content)
+
   for socket in socketsList:
     try:
-      let c = nkf(content)
       if c.isNone:
         continue  # TODO: send error
       else:
@@ -255,10 +256,24 @@ proc processSession(client: AsyncSocket, clientAddr: string) {.async.} =
   return
 
 proc socketCallback(req: Request) {.async, gcsafe.} =
+  # new connection
+
   if req.url.path == "/socket":
     try:
       var ws = await newWebSocket(req)
       socketsList.add(ws)
+      
+      for s in getSessionsFromDB():
+        let s_utf8 = nkf(s.toJson)
+        if s_utf8.isNone:
+          continue  # TODO: ERRORを送る
+
+        try:
+          await ws.send(s_utf8.get())
+        except WebSocketClosedError:
+          continue
+        except WebSocketError:
+          continue
 
       while ws.readyState == Open:
         await sleepAsync(1000)

@@ -3,8 +3,11 @@ import times
 import norm / [model, sqlite]
 import std / with
 import types
+import re
 import strutils
 import json
+import options
+import nativesockets
 
 # types
 
@@ -17,7 +20,7 @@ type
     timestamp*: Time  # UnixTime
 
 type
-  ErrorSession = ref object of Model
+  DBSession = ref object of Model
     fromHostName: string
     toHostName: string
 
@@ -54,8 +57,8 @@ else:
 
 # procs
 
-proc newErrorSession(session = Session()): ErrorSession =
-  return ErrorSession(
+proc newDBSession(session = Session()): DBSession =
+  return DBSession(
     fromHostname: session.fromHostname,
     toHostName: session.toHostname,
 
@@ -77,16 +80,69 @@ proc newErrorSession(session = Session()): ErrorSession =
   )
 
 
-proc `[]=`*(t: var SessionTable, key: SessionTableKey, val: Session) =
-  # record 5xx, 400, 405, 411, 412, 413, 414, 415, 417, 418, 421, 429, 431 error
-  var recordFlag: bool = false
-  if int(val.response.statusCode.int / 100) in [4, 5]:
-    recordFlag = true
+proc toSession(dbSession: DBSession): Option[Session] =
+  let requestMethod = dbSession.requestHttpMethod.toMethod
+  if requestMethod.isNone():
+    return none(Session)
 
-  if recordFlag:
-    var errorSession: ErrorSession = newErrorSession(val)
-    with dbConn:
-      insert errorSession
+  var requestHeaders: seq[HttpHeader]
+  let requestHeadersJson = dbSession.requestHeaders.parseJson()
+
+  for r in requestHeadersJson.pairs:
+    let h: HttpHeader = (key: r.key, value: r.val.getStr())
+    requestHeaders.add(h)
+  
+  let request: ProxyHttpRequest = ProxyHttpRequest(
+    httpMethod: dbSession.requestHttpMethod.toMethod.get(),
+    host: dbSession.requestHost,
+    path: dbSession.requestPath,
+    port: Port(dbSession.requestPort),
+    protocol: dbSession.requestProtocol,
+    headers: requestHeaders,
+    body: dbSession.requestBody,
+  )
+
+  var responseHeaders: seq[HttpHeader]
+  let responseHeadersJson = dbSession.responseHeaders.parseJson()
+
+  for r in responseHeadersJson.pairs:
+    let h: HttpHeader = (key: r.key, value: r.val.getStr())
+    responseHeaders.add(h)
+
+  let response = HttpResponse(
+    protocol: dbSession.responseProtocol,
+    statusCode: dbSession.responseStatusCode.uint16,
+    statusMessage: dbSession.responseStatusMessage,
+    headers: responseHeaders,
+    body: dbSession.responseBody,
+  )
+
+  return some(Session(
+    fromHostName: dbSession.fromHostName,
+    toHostName: dbSession.toHostName,
+    request: request,
+    response: response,
+    timestamp: dbSession.timestamp.toTime,
+  ))
+
+
+proc getSessionsFromDB*(offset: int = 0, limit: Option[int] = none(int)): seq[Session] =
+  var sessions: seq[DBSession] = @[DBSession()]
+  dbConn.selectAll(sessions)
+  
+  var res: seq[Session]
+  for db_s in sessions:
+    let s = db_s.toSession()
+    if s.isNone:
+      continue  # TODO: ERROR送信
+    res.add(s.get())
+  return res
+
+
+proc `[]=`*(t: var SessionTable, key: SessionTableKey, val: Session) =
+  var errorSession: DBSession = newDBSession(val)
+  with dbConn:
+    insert errorSession
 
   # insert value to table
   tables.`[]=`(t, key, val)
@@ -129,4 +185,4 @@ proc toJson*(s: Session): string =
 
 
 block connect:
-  dbConn.createTables(newErrorSession())
+  dbConn.createTables(newDBSession())
