@@ -13,3 +13,17 @@ Read the HTTP communication between containers and monitor if any 5xx error occu
 ## Dependencies
 
 - nkf
+
+## Run
+
+### Build
+
+```sh
+nimble build
+```
+
+### Up
+
+```sh
+./health_proxy
+```
