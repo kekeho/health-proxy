@@ -1,6 +1,9 @@
 # Health Proxy
 
-A simple proxy to check the health of each container in a microservice architecture.
+
+![screenshot](docs/screenshot.png)
+
+A simple proxy to check the traffic of each container in a microservice architecture.
 
 ## Status
 
@@ -23,11 +26,11 @@ nimble build  # build proxy server
 
 # build front
 cd front
-elm make src/Main.elm --output=dist/static/js/elm.js --optimize  
+elm make src/Main.elm --output=dist/static/js/elm.js --optimize
 ```
 
 ### Up
 
 ```sh
-./health_proxy
+./health_proxy <address> <proxy_port> <webconsole_port>
 ```
