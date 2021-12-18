@@ -19,7 +19,11 @@ Read the HTTP communication between containers and monitor if any 5xx error occu
 ### Build
 
 ```sh
-nimble build
+nimble build  # build proxy server
+
+# build front
+cd front
+elm make src/Main.elm --output=dist/static/js/elm.js --optimize  
 ```
 
 ### Up

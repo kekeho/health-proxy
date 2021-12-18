@@ -56,9 +56,8 @@ update msg model =
                                 |> List.take 3000
                             , Model.maybeIncrement model.selectedSession
                             )
-                        Err e ->
-                            Debug.log "error" e 
-                                |> \_ -> (model.sessions, model.selectedSession)
+                        Err _ ->
+                            (model.sessions, model.selectedSession)
             in
             ( { model | sessions = newSessionList, selectedSession = selectedSession }
             , Cmd.none
