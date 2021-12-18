@@ -263,7 +263,7 @@ proc socketCallback(req: Request) {.async, gcsafe.} =
       var ws = await newWebSocket(req)
       socketsList.add(ws)
       
-      let sessions = getSessionsFromDB(limit=100)
+      let sessions = getSessionsFromDB(limit=10000)
       for s_i in 1..sessions.len:
         let s_utf8 = nkf(sessions[sessions.len-s_i].toJson)
         if s_utf8.isNone:

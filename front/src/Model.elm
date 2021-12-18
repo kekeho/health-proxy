@@ -6,7 +6,7 @@ import Url.Parser
 import Time
 import Json.Decode as D
 import String exposing (toUpper)
-import Dict
+import Dict exposing (Dict)
 
 -- Types
 
@@ -52,10 +52,33 @@ type alias Session =
     }
 
 
+type alias Filter =
+    { status: List Int
+    , method: List HttpMethod
+    , from : List String
+    , to: List String
+    }
+
+
+type FilterType
+    = Status
+    | Method
+    | From
+    | To
+
+type alias FilterEditor =
+    { status: String
+    , method: String
+    , from: String
+    , to: String
+    }
+
 type alias Model =
     { key : Nav.Key
     , url : Url.Url
     , sessions: List Session
+    , filter: Filter
+    , filterEditor : FilterEditor
     , timezone: Time.Zone
     , selectedSession : Maybe Int
     }
@@ -133,7 +156,7 @@ fullPath request =
 
 initModel : Url.Url -> Nav.Key -> Model
 initModel url key =
-    Model key url [] Time.utc (Just -1)
+    Model key url [] (Filter [] [] [] []) (FilterEditor "" "" "" "") Time.utc (Just -1)
 
 
 splitByHost : List Session -> List (String, List Session)

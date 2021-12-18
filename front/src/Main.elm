@@ -14,6 +14,9 @@ import Html.Attributes exposing (..)
 import Model exposing (sessionDecoder)
 import Time
 import Task
+import Dict
+import Model exposing (strToHttpMethod)
+import Model exposing (HttpMethod(..))
 
 
 main : Program () Model.Model Msg
@@ -78,8 +81,123 @@ update msg model =
             ( { model | selectedSession = Just i}
             , Cmd.none
             )
+        
+        AddFilter t ->
+            let
+                filter = model.filter
+                filterEditor_ = model.filterEditor
+            in
+            case t of
+                Model.Status ->
+                    let
+                        (statusFilter, filterEditor) = case String.toInt model.filterEditor.status of
+                            Nothing ->
+                                (model.filter.status, filterEditor_)  -- TODO: エラー通知
+                            Just s ->
+                                ( s :: model.filter.status
+                                    |> uniqueList
+                                , { filterEditor_ | status = "" }
+                                )
+                    in
+                    ( { model | filter = { filter | status = statusFilter }, filterEditor = filterEditor }
+                    , Cmd.none
+                    )
+                Model.Method ->
+                    let
+                        (modelFilter, filterEditor) = case strToHttpMethod model.filterEditor.method of
+                            Other _ ->
+                                (model.filter.method, filterEditor_)  -- TODO: エラー通知
+                            x ->
+                                ( x :: model.filter.method
+                                    |> uniqueList
+                                , { filterEditor_ | method = "" }
+                                )
+                    in
+                    ( { model | filter = { filter | method = modelFilter }, filterEditor = filterEditor }
+                    , Cmd.none
+                    )
+                Model.From ->
+                    let
+                        from_ = model.filterEditor.from
+                        (from, filterEditor) =
+                            if from_ /= "" then
+                                ( from_ :: model.filter.from
+                                    |> uniqueList
+                                , { filterEditor_ | from = "" }
+                                )
+                            else
+                                (model.filter.from, filterEditor_)
+                    in
+                    ( { model | filter = { filter | from = from }, filterEditor = filterEditor}
+                    , Cmd.none
+                    )
+                Model.To ->
+                    let
+                        to_ = model.filterEditor.to
+                        (to, filterEditor) =
+                            if to_ /= "" then
+                                ( to_ :: model.filter.to
+                                    |> uniqueList
+                                , { filterEditor_ | to = "" }
+                                )
+                            else 
+                                ( model.filter.to, filterEditor_)
+                    in
+                    ( { model | filter = { filter | to = to }, filterEditor = filterEditor}
+                    , Cmd.none
+                    )
 
+        DeleteFilter t i ->
+            let
+                withoutIndex list = 
+                    List.map (\(_, v) -> v) <| List.filter (\(idx, _) -> idx /= i ) <| List.indexedMap Tuple.pair  list
+                filter_ = model.filter
+                filter = case t of
+                    Model.Status ->
+                        { filter_ | status = withoutIndex model.filter.status }
+                    Model.Method ->
+                        { filter_ | method = withoutIndex model.filter.method }
+                    Model.From ->
+                        { filter_ | from = withoutIndex model.filter.from }
+                    Model.To ->
+                        { filter_ | to = withoutIndex model.filter.to }
+            in
+            ( { model | filter = filter }
+            , Cmd.none
+            )
+        
+        EditFilterEditor t v ->
+            let
+                filterEditor_ = model.filterEditor
+                filterEditor = case t of
+                    Model.Status ->
+                        { filterEditor_ | status = v }
+                    Model.Method ->
+                        { filterEditor_ | method = v}
+                    Model.From ->
+                        { filterEditor_ | from = v }
+                    Model.To ->
+                        { filterEditor_ | to = v }
+            in
+            ( { model | filterEditor = filterEditor }
+            , Cmd.none
+            )
 
 subscriptions : Model.Model -> Sub Msg
 subscriptions model =
     sessionReciever RecvSession
+
+
+-- FUNC
+
+uniqueList : List a -> List a
+uniqueList l = 
+    let
+        incUnique : a -> List a -> List a
+        incUnique elem lst = 
+            if List.member elem lst then
+                lst
+            else
+                elem :: lst
+    in
+        List.foldr incUnique [] l

@@ -11,6 +11,9 @@ import Model
 import Message exposing (..)
 import Model exposing (Session)
 import Html.Events exposing (onClick)
+import Model exposing (Filter)
+import Html.Events exposing (onInput)
+import Model exposing (FilterEditor)
 
 
 
@@ -122,11 +125,13 @@ headerItem (k, v) =
         ]
 
 
-listView : Time.Zone -> Maybe Int -> List Model.Session -> Html Msg
-listView tz selectedSession sessions =
+listView : Time.Zone -> Model.Filter -> Model.FilterEditor -> Maybe Int -> List Model.Session -> Html Msg
+listView tz filter filterEditor selectedSession sessions =
     div [ class "list-view" ]
         [ div [ class "traffic" ]
-            [ h1 [] [ text "Traffic" ]
+            [ h1 [] [ text "Filter" ] 
+            , filterView filter filterEditor
+            , h1 [] [ text "Traffic" ]
             , table [] 
                 [ thead []
                     [ tr []
@@ -138,9 +143,90 @@ listView tz selectedSession sessions =
                         ]
                     ]
                 , tbody []
-                    (List.indexedMap (\i s -> sessionRow tz selectedSession s i) sessions)
+                    (List.indexedMap (\i s -> sessionRow tz selectedSession s i) <| filterFunc filter sessions)
                 ]
             ]
+        ]
+
+
+filterFunc : Filter -> List Model.Session -> List Model.Session
+filterFunc filter sessionList =
+    let
+        statusFilter: List Int -> List Model.Session -> List Model.Session
+        statusFilter st ss =
+            if List.length st == 0 then
+                ss
+            else
+                List.filter (\s -> List.member s.response.statusCode st) ss
+
+        methodFilter: List Model.HttpMethod -> List Model.Session -> List Model.Session
+        methodFilter mt ss =
+            if List.length mt == 0 then
+                ss
+            else
+                List.filter (\s -> List.member s.request.httpMethod mt) ss
+        fromFilter: List String -> List Model.Session -> List Model.Session
+        fromFilter fr ss =
+            if List.length fr == 0 then
+                ss
+            else
+                List.filter (\s -> List.member s.fromHostName fr) ss
+        toFilter: List String -> List Model.Session -> List Model.Session
+        toFilter to ss =
+            if List.length to == 0 then
+                ss
+            else
+                List.filter (\s -> List.member s.toHostName to) ss
+    in
+    sessionList
+        |> statusFilter filter.status
+        |> methodFilter filter.method
+        |> fromFilter filter.from
+        |> toFilter filter.to
+
+
+filterView : Filter -> FilterEditor -> Html Msg
+filterView filter filterEditor =
+    div [ class "filter-view" ]
+        [ details [ class "status" ]
+            [ summary [] [ text ("Status (" ++ String.fromInt (List.length filter.status) ++ ")") ]
+            , addView Model.Status filterEditor.status
+            , ul []
+                (List.indexedMap (filterList Model.Status) <| List.map String.fromInt filter.status)
+            ]
+        , details [ class "method" ]
+            [ summary [] [ text ("Method (" ++ String.fromInt (List.length filter.method) ++ ")") ]
+            , addView Model.Method filterEditor.method
+            , ul []
+                (List.indexedMap (filterList Model.Method) <| List.map Model.httpMethodToStr filter.method )
+            ]
+        , details [ class "from" ]
+            [ summary [] [ text ("From (" ++ String.fromInt (List.length filter.from) ++ ")") ]
+            , addView Model.From filterEditor.from
+            , ul []
+                (List.indexedMap (filterList Model.From) filter.from)
+            ]
+        , details [ class "to" ]
+            [ summary [] [ text ("To (" ++ String.fromInt (List.length filter.to) ++ ")") ]
+            , addView Model.To filterEditor.to
+            , ul []
+                (List.indexedMap (filterList Model.To) filter.to)
+            ]
+        ]
+
+
+filterList : Model.FilterType -> Int -> String -> Html Msg
+filterList filterType id string =
+    li []
+        [ text string
+        , span [ onClick (DeleteFilter filterType id) ] [text " [☓]"]
+        ]
+
+addView : Model.FilterType -> String -> Html Msg
+addView filterType val =
+    div [ class "add" ]
+        [ input [type_ "text", onInput (EditFilterEditor filterType), value val ] []
+        , button [ onClick (AddFilter filterType) ] [ text "Add" ]
         ]
 
 
@@ -175,7 +261,7 @@ view model =
                         [ detailView 
                             model.timezone
                             (Maybe.andThen (\i -> getWithIndex i model.sessions ) model.selectedSession)
-                        , listView model.timezone model.selectedSession model.sessions
+                        , listView model.timezone model.filter model.filterEditor model.selectedSession model.sessions
                         ]
                 Nothing ->
                     [ notFoundView ]
